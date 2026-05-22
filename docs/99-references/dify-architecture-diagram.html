@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dify v1.14 完整应用架构图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 40px 20px;
+    min-width: 1400px;
+  }
+  h1 { text-align: center; font-size: 28px; margin-bottom: 8px; color: #f8fafc; letter-spacing: 1px; }
+  .subtitle { text-align: center; font-size: 14px; color: #94a3b8; margin-bottom: 40px; }
+
+  /* Legend */
+  .legend {
+    display: flex; gap: 24px; justify-content: center; margin-bottom: 30px;
+    font-size: 13px; color: #94a3b8;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 3px; display: inline-block;
+  }
+
+  /* Architecture sections */
+  .section {
+    position: relative;
+    margin: 0 auto 20px auto;
+    max-width: 1300px;
+  }
+  .section-label {
+    font-size: 13px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 2px; color: #64748b; margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  /* Row layout */
+  .row {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: nowrap;
+    margin-bottom: 16px;
+  }
+
+  /* Service box */
+  .svc {
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; min-width: 120px;
+    border: 1.5px solid rgba(255,255,255,0.08);
+    transition: all 0.2s;
+  }
+  .svc:hover {
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .svc-icon { font-size: 24px; margin-bottom: 6px; }
+  .svc-name { font-size: 13px; font-weight: 600; color: #f1f5f9; white-space: nowrap; }
+  .svc-sub { font-size: 11px; color: #64748b; margin-top: 2px; text-align: center; }
+  .svc-tag {
+    position: absolute; top: -8px; right: -8px;
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600;
+  }
+  .svc-details {
+    margin-top: 8px; font-size: 10px; color: #475569;
+    text-align: center; line-height: 1.4;
+  }
+
+  /* Color themes */
+  .blue { background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%); }
+  .green { background: linear-gradient(135deg, #14532d 0%, #052e16 100%); }
+  .purple { background: linear-gradient(135deg, #3b0764 0%, #2e1065 100%); }
+  .orange { background: linear-gradient(135deg, #7c2d12 0%, #431407 100%); }
+  .teal { background: linear-gradient(135deg, #134e4a 0%, #042f2e 100%); }
+  .red { background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); }
+  .slate { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+  .amber { background: linear-gradient(135deg, #78350f 0%, #451a03 100%); }
+  .indigo { background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%); }
+  .rose { background: linear-gradient(135deg, #4c0519 0%, #2d0210 100%); }
+
+  .tag-core { background: #22c55e; color: #052e16; }
+  .tag-optional { background: #f59e0b; color: #451a03; }
+  .tag-critical { background: #ef4444; color: #fff; }
+  .tag-external { background: #6366f1; color: #fff; }
+  .tag-cut { background: #64748b; color: #fff; text-decoration: line-through; }
+
+  /* Arrow connector */
+  .arrow-zone {
+    display: flex; justify-content: center; align-items: center;
+    height: 36px; gap: 40px; margin: 4px 0;
+  }
+  .arrow-down {
+    width: 2px; height: 36px; position: relative;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .arrow-down::before {
+    content: ''; display: block; width: 2px; height: 28px;
+    background: #334155;
+  }
+  .arrow-down::after {
+    content: ''; display: block;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #334155;
+  }
+  .arrow-label {
+    font-size: 10px; color: #475569; white-space: nowrap;
+    position: absolute; left: 14px; top: 8px;
+  }
+
+  /* Horizontal flow */
+  .flow-row {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .flow-arrow {
+    font-size: 18px; color: #334155;
+  }
+  .flow-label {
+    font-size: 10px; color: #475569; text-align: center;
+    max-width: 80px;
+  }
+
+  /* Data model section */
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    max-width: 1300px;
+    margin: 0 auto 20px auto;
+  }
+  .data-item {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .data-item .emoji { font-size: 14px; }
+
+  /* Queue section */
+  .queue-bar {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .queue-chip {
+    background: #1e293b; border: 1px solid #334155;
+    border-radius: 6px; padding: 6px 14px;
+    font-size: 11px; color: #94a3b8;
+  }
+  .queue-chip b { color: #e2e8f0; }
+
+  /* Stats table */
+  .stats-table {
+    max-width: 1300px; margin: 20px auto 0 auto;
+    border-collapse: collapse; width: 100%;
+    font-size: 13px;
+  }
+  .stats-table th {
+    text-align: left; padding: 10px 14px;
+    background: #1e293b; color: #94a3b8;
+    border-bottom: 2px solid #334155;
+    font-weight: 600;
+  }
+  .stats-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .stats-table tr:hover td { background: rgba(30,41,59,0.5); }
+
+  /* Section divider */
+  .divider {
+    border: none; border-top: 1px solid #1e293b;
+    margin: 30px auto; max-width: 1300px;
+  }
+
+  /* Nginx routing box */
+  .routing-box {
+    max-width: 1300px; margin: 0 auto 16px auto;
+    background: #1e293b; border-radius: 10px; padding: 16px 24px;
+    border: 1px solid #334155;
+  }
+  .routing-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .route-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #94a3b8;
+    background: #0f172a; border-radius: 6px; padding: 6px 12px;
+    border: 1px solid #1e293b;
+  }
+  .route-path { color: #22d3ee; font-family: 'SF Mono', monospace; font-weight: 600; }
+  .route-arrow { color: #475569; }
+  .route-target { color: #a78bfa; }
+
+  /* Request flow */
+  .flow-diagram {
+    max-width: 1300px; margin: 0 auto;
+    background: #0c1222; border-radius: 12px; padding: 24px;
+    border: 1px solid #1e293b;
+  }
+  .flow-step {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+  }
+  .flow-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #334155; color: #94a3b8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .flow-text { font-size: 12px; color: #94a3b8; }
+  .flow-text code {
+    background: #1e293b; padding: 1px 6px; border-radius: 3px;
+    color: #22d3ee; font-size: 11px;
+  }
+  .flow-text .highlight { color: #fbbf24; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>🏗️ Dify v1.14 完整应用架构图</h1>
+<p class="subtitle">12 个 Docker 服务 · 460K LOC · 多租户 Agent 对话平台 · 数据流全景</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>核心服务</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>可选服务</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>安全关键</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#6366f1"></span>外部依赖</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#64748b"></span>可裁剪</div>
+</div>
+
+<!-- ============ Layer 1: Users ============ -->
+<div class="section">
+  <div class="section-label">👤 用户层</div>
+  <div class="row">
+    <div class="svc slate" style="min-width:160px">
+      <div class="svc-icon">🌐</div>
+      <div class="svc-name">管理员</div>
+      <div class="svc-sub">控制台 /console/api</div>
+      <div class="svc-details">创建应用、配置模型、管理工具<br>5 级 RBAC 权限控制</div>
+    </div>
+    <div class="svc slate" style="min-width:160px">
+      <div class="svc-icon">💬</div>
+      <div class="svc-name">终端用户</div>
+      <div class="svc-sub">对话 /api + /v1</div>
+      <div class="svc-details">Web 对话、API 调用、SSE 流式</div>
+    </div>
+    <div class="svc slate" style="min-width:160px">
+      <div class="svc-icon">🔌</div>
+      <div class="svc-name">外部系统</div>
+      <div class="svc-sub">Webhook /triggers + /v1</div>
+      <div class="svc-details">定时触发、HTTP 回调、MCP 协议</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">HTTP/SSE</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP/SSE</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP</span></div>
+</div>
+
+<!-- ============ Layer 2: Nginx ============ -->
+<div class="section">
+  <div class="section-label">🔀 反向代理层</div>
+  <div class="row">
+    <div class="svc blue" style="min-width:400px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">🏛️</div>
+      <div class="svc-name">Nginx</div>
+      <div class="svc-sub">nginx:latest · 13 MB · 端口 80/443</div>
+      <div class="svc-details">SSL 终止、静态文件托管、负载均衡、路由分发</div>
+    </div>
+  </div>
+  <div class="routing-box" style="margin-top:12px">
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;text-align:center">Nginx 路由表</div>
+    <div class="routing-row">
+      <div class="route-item"><span class="route-path">/console/api/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/api/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/v1/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/files/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/mcp/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/triggers/*</span> <span class="route-arrow">→</span> <span class="route-target">api:5001</span></div>
+      <div class="route-item"><span class="route-path">/socket.io/*</span> <span class="route-arrow">→</span> <span class="route-target">ws:5001</span></div>
+      <div class="route-item"><span class="route-path">/e/*</span> <span class="route-arrow">→</span> <span class="route-target">plugin:5002</span></div>
+      <div class="route-item"><span class="route-path">/explore</span> <span class="route-arrow">→</span> <span class="route-target">web:3000</span></div>
+      <div class="route-item"><span class="route-path">/*</span> <span class="route-arrow">→</span> <span class="route-target">web:3000</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">proxy_pass</span></div>
+</div>
+
+<!-- ============ Layer 3: Frontend ============ -->
+<div class="section">
+  <div class="section-label">🎨 前端层</div>
+  <div class="row">
+    <div class="svc indigo" style="min-width:300px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">⚛️</div>
+      <div class="svc-name">Web (Next.js)</div>
+      <div class="svc-sub">langgenius/dify-web · 99 MB · 端口 3000</div>
+      <div class="svc-details">React 18 + TypeScript + Tailwind<br>197K LOC · ReactFlow 画布 · 31 种语言</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">REST API / SSE</span></div>
+</div>
+
+<!-- ============ Layer 4: Application ============ -->
+<div class="section">
+  <div class="section-label">⚙️ 应用层</div>
+  <div class="row">
+    <div class="svc green" style="min-width:180px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">🚀</div>
+      <div class="svc-name">API Server</div>
+      <div class="svc-sub">Flask + gevent · 340 MB</div>
+      <div class="svc-details">1 Worker · REST API<br>认证 · 多租户 · 路由分发</div>
+    </div>
+    <div class="svc green" style="min-width:180px">
+      <span class="svc-tag tag-optional">可选</span>
+      <div class="svc-icon">🔌</div>
+      <div class="svc-name">API WebSocket</div>
+      <div class="svc-sub">Flask + gevent · 313 MB</div>
+      <div class="svc-details">Socket.IO · 协作编辑<br>可与 API 合并</div>
+    </div>
+    <div class="svc teal" style="min-width:180px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">⚙️</div>
+      <div class="svc-name">Celery Worker</div>
+      <div class="svc-sub">4 Workers · 330 MB</div>
+      <div class="svc-details">异步任务 · 知识库索引<br>邮件 · 工作流持久化</div>
+    </div>
+    <div class="svc teal" style="min-width:160px">
+      <span class="svc-tag tag-optional">可选</span>
+      <div class="svc-icon">⏰</div>
+      <div class="svc-name">Celery Beat</div>
+      <div class="svc-sub">定时调度 · 300 MB</div>
+      <div class="svc-details">Cron 任务触发<br>可合并进 Worker</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Layer 4.5: Core Engine ============ -->
+<div class="section">
+  <div class="section-label">🧠 核心引擎 (Python · api 容器内)</div>
+  <div class="row">
+    <div class="svc purple" style="min-width:130px">
+      <div class="svc-icon">🤖</div>
+      <div class="svc-name">Agent Engine</div>
+      <div class="svc-sub">FC / CoT 策略 · 2.3K LOC</div>
+    </div>
+    <div class="svc purple" style="min-width:130px">
+      <div class="svc-icon">🔄</div>
+      <div class="svc-name">Workflow Engine</div>
+      <div class="svc-sub">graphon DAG · 5.7K LOC</div>
+    </div>
+    <div class="svc purple" style="min-width:130px">
+      <div class="svc-icon">🛠️</div>
+      <div class="svc-name">Tool System</div>
+      <div class="svc-sub">内置/MCP/自定义 · 8.3K LOC</div>
+    </div>
+    <div class="svc purple" style="min-width:130px">
+      <div class="svc-icon">📡</div>
+      <div class="svc-name">MCP Client</div>
+      <div class="svc-sub">协议客户端 · 4.7K LOC</div>
+    </div>
+    <div class="svc rose" style="min-width:130px">
+      <div class="svc-icon">📚</div>
+      <div class="svc-name">RAG Pipeline</div>
+      <div class="svc-sub">检索/分块/重排 · 13.3K LOC</div>
+      <span class="svc-tag tag-cut" style="position:static;margin-top:4px;display:inline-block">可裁</span>
+    </div>
+    <div class="svc rose" style="min-width:130px">
+      <div class="svc-icon">🧩</div>
+      <div class="svc-name">Plugin System</div>
+      <div class="svc-sub">Marketplace · 5.9K LOC</div>
+      <span class="svc-tag tag-cut" style="position:static;margin-top:4px;display:inline-block">可裁</span>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">SQLAlchemy</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP</span></div>
+  <div class="arrow-down"><span class="arrow-label">Broker</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP</span></div>
+</div>
+
+<!-- ============ Layer 5: Infrastructure ============ -->
+<div class="section">
+  <div class="section-label">💾 基础设施层</div>
+  <div class="row">
+    <div class="svc orange" style="min-width:160px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">🐘</div>
+      <div class="svc-name">PostgreSQL</div>
+      <div class="svc-sub">15 · 62 MB · 端口 5432</div>
+      <div class="svc-details">主数据库 + pgvector<br>100+ 表 · Flyway 迁移</div>
+    </div>
+    <div class="svc red" style="min-width:160px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">⚡</div>
+      <div class="svc-name">Redis</div>
+      <div class="svc-sub">6 · 13 MB · 端口 6379</div>
+      <div class="svc-details">缓存 + Celery Broker<br>支持 Sentinel/Cluster</div>
+    </div>
+    <div class="svc amber" style="min-width:160px">
+      <span class="svc-tag tag-critical">安全</span>
+      <div class="svc-icon">🔒</div>
+      <div class="svc-name">Sandbox</div>
+      <div class="svc-sub">Go/Gin · 7 MB · 端口 8194</div>
+      <div class="svc-details">代码执行沙箱<br>Python3 + Node.js · 5s 超时</div>
+    </div>
+    <div class="svc amber" style="min-width:160px">
+      <span class="svc-tag tag-critical">安全</span>
+      <div class="svc-icon">🛡️</div>
+      <div class="svc-name">SSRF Proxy</div>
+      <div class="svc-sub">Squid · 23 MB · 端口 3128</div>
+      <div class="svc-details">阻止内网访问<br>白名单 marketplace.dify.ai</div>
+    </div>
+    <div class="svc slate" style="min-width:160px">
+      <span class="svc-tag tag-optional">可选</span>
+      <div class="svc-icon">🧩</div>
+      <div class="svc-name">Plugin Daemon</div>
+      <div class="svc-sub">Go · 160 MB · 端口 5002</div>
+      <div class="svc-details">插件运行时<br>独立 venv per plugin</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">向量查询</span></div>
+</div>
+
+<!-- ============ Layer 6: Vector Store ============ -->
+<div class="section">
+  <div class="section-label">🔍 向量存储层 (16 种可选)</div>
+  <div class="row">
+    <div class="svc blue" style="min-width:130px">
+      <span class="svc-tag tag-core">当前</span>
+      <div class="svc-icon">✳️</div>
+      <div class="svc-name">Weaviate</div>
+      <div class="svc-sub">36 MB · 默认</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">🐘</div>
+      <div class="svc-name">pgvector</div>
+      <div class="svc-sub">PG 扩展</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">🔥</div>
+      <div class="svc-name">Milvus</div>
+      <div class="svc-sub">分布式</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">🎯</div>
+      <div class="svc-name">Qdrant</div>
+      <div class="svc-sub">Rust</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">🔮</div>
+      <div class="svc-name">Chroma</div>
+      <div class="svc-sub">轻量</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">🔍</div>
+      <div class="svc-name">OpenSearch</div>
+      <div class="svc-sub">AWS</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">📊</div>
+      <div class="svc-name">Elastic</div>
+      <div class="svc-sub">ES 8.x</div>
+    </div>
+    <div class="svc slate" style="min-width:110px;opacity:0.6">
+      <div class="svc-icon">📦</div>
+      <div class="svc-name">+9 more</div>
+      <div class="svc-sub">OceanBase/Oracle...</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">API 调用</span></div>
+</div>
+
+<!-- ============ Layer 7: External ============ -->
+<div class="section">
+  <div class="section-label">☁️ 外部服务层</div>
+  <div class="row">
+    <div class="svc indigo" style="min-width:180px">
+      <span class="svc-tag tag-external">外部</span>
+      <div class="svc-icon">🧠</div>
+      <div class="svc-name">LLM Providers</div>
+      <div class="svc-sub">智谱/OpenAI/Anthropic/...</div>
+      <div class="svc-details">100+ 模型 · 通过插件机制调用<br>真正性能瓶颈</div>
+    </div>
+    <div class="svc indigo" style="min-width:180px">
+      <span class="svc-tag tag-external">外部</span>
+      <div class="svc-icon">🏪</div>
+      <div class="svc-name">Plugin Marketplace</div>
+      <div class="svc-sub">marketplace.dify.ai</div>
+      <div class="svc-details">1000+ 工具插件<br>模型提供商 · Agent 策略</div>
+    </div>
+    <div class="svc indigo" style="min-width:180px">
+      <span class="svc-tag tag-external">外部</span>
+      <div class="svc-icon">☁️</div>
+      <div class="svc-name">Object Storage</div>
+      <div class="svc-sub">S3 / OSS / Azure Blob</div>
+      <div class="svc-details">文件上传 · 图片 · 文档<br>可配置为本地存储</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Request Flow ============ -->
+<div class="section">
+  <div class="section-label">📡 典型请求流：用户发送消息</div>
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-text">用户在浏览器输入消息 → <code>POST /api/chat/messages</code></div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-text">Nginx 路由到 <span class="highlight">API Server</span> (Flask) → 认证 + 多租户隔离 (tenant_id)</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-text">根据 App 类型分发到对应执行引擎 → <span class="highlight">Agent Engine</span> / Chat Engine / Workflow Engine</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-text">Agent Engine 决策 → 是否需要调用工具？ → <span class="highlight">Tool System</span> / MCP Client</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-text">构建 Prompt → 通过 <span class="highlight">Plugin Daemon</span> 调用智谱 GLM API → <span class="highlight">SSE 流式返回</span></div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">6</div>
+      <div class="flow-text">流式 chunks → Nginx → 浏览器 → 用户看到打字效果 ✅</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">7</div>
+      <div class="flow-text">对话完成 → <span class="highlight">Celery Worker</span> 异步持久化 → <span class="highlight">PostgreSQL</span> 存储消息记录</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Celery Queues ============ -->
+<div class="section">
+  <div class="section-label">📋 Celery 异步队列</div>
+  <div class="queue-bar">
+    <div class="queue-chip"><b>dataset</b> · 25 任务 · 文档索引</div>
+    <div class="queue-chip"><b>pipeline</b> · RAG 管道</div>
+    <div class="queue-chip"><b>priority_pipeline</b> · 优先管道</div>
+    <div class="queue-chip"><b>mail</b> · 16 任务 · 邮件</div>
+    <div class="queue-chip"><b>dataset_summary</b> · 摘要生成</div>
+    <div class="queue-chip"><b>workflow_draft_var</b> · 变量清理</div>
+    <div class="queue-chip"><b>app_deletion</b> · 应用清理</div>
+    <div class="queue-chip"><b>schedule_executor</b> · 定时任务</div>
+  </div>
+  <div style="text-align:center;font-size:11px;color:#475569">
+    TenantIsolatedTaskQueue: 每个 tenant 独立排队，防止大租户占满队列
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Data Model ============ -->
+<div class="section">
+  <div class="section-label">🗃️ 核心数据模型 (PostgreSQL · 100+ 表)</div>
+  <div class="data-grid">
+    <div class="data-item"><span class="emoji">👤</span> accounts</div>
+    <div class="data-item"><span class="emoji">🏢</span> tenants</div>
+    <div class="data-item"><span class="emoji">🔗</span> tenant_account_joins</div>
+    <div class="data-item"><span class="emoji">📱</span> apps</div>
+    <div class="data-item"><span class="emoji">💬</span> conversations</div>
+    <div class="data-item"><span class="emoji">✉️</span> messages</div>
+    <div class="data-item"><span class="emoji">🔧</span> workflows</div>
+    <div class="data-item"><span class="emoji">▶️</span> workflow_runs</div>
+    <div class="data-item"><span class="emoji">📍</span> workflow_node_executions</div>
+    <div class="data-item"><span class="emoji">🤖</span> agents</div>
+    <div class="data-item"><span class="emoji">⚙️</span> app_model_configs</div>
+    <div class="data-item"><span class="emoji">🔑</span> api_tokens</div>
+    <div class="data-item"><span class="emoji">📚</span> datasets</div>
+    <div class="data-item"><span class="emoji">📄</span> documents</div>
+    <div class="data-item"><span class="emoji">🧩</span> document_segments</div>
+    <div class="data-item"><span class="emoji">🛠️</span> tool_builtin_providers</div>
+    <div class="data-item"><span class="emoji">📡</span> tool_mcp_providers</div>
+    <div class="data-item"><span class="emoji">📦</span> providers (模型)</div>
+    <div class="data-item"><span class="emoji">🗂️</span> upload_files</div>
+    <div class="data-item"><span class="emoji">⏰</span> trigger_subscriptions</div>
+    <div class="data-item"><span class="emoji">📝</span> human_input_forms</div>
+    <div class="data-item"><span class="emoji">🏷️</span> tags</div>
+    <div class="data-item"><span class="emoji">📊</span> sites (分享)</div>
+    <div class="data-item"><span class="emoji">🔐</span> operation_logs</div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Resource Summary ============ -->
+<div class="section">
+  <div class="section-label">📊 资源占用与裁剪建议</div>
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>服务</th>
+        <th>内存</th>
+        <th>必须？</th>
+        <th>AIDevOps 需要？</th>
+        <th>裁剪建议</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Nginx</td><td>13 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留</td></tr>
+      <tr><td>API Server</td><td>340 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留，可加 Worker</td></tr>
+      <tr><td>Celery Worker</td><td>330 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留，2 Worker 够用</td></tr>
+      <tr><td>PostgreSQL</td><td>62 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留 + pgvector</td></tr>
+      <tr><td>Redis</td><td>13 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留</td></tr>
+      <tr><td>Web (Next.js)</td><td>99 MB</td><td style="color:#22c55e">✅</td><td style="color:#22c55e">✅</td><td>保留</td></tr>
+      <tr><td>API WebSocket</td><td>313 MB</td><td style="color:#f59e0b">⚠️</td><td style="color:#94a3b8">协作编辑</td><td style="color:#f59e0b">可选裁</td></tr>
+      <tr><td>Celery Beat</td><td>300 MB</td><td style="color:#f59e0b">⚠️</td><td style="color:#94a3b8">定时触发</td><td style="color:#f59e0b">可合并进 Worker</td></tr>
+      <tr><td>Plugin Daemon</td><td>160 MB</td><td style="color:#f59e0b">⚠️</td><td style="color:#f59e0b">模型调用依赖</td><td style="color:#f59e0b">短期保留</td></tr>
+      <tr><td>Weaviate</td><td>36 MB</td><td style="color:#64748b">❌</td><td style="color:#64748b">可换 pgvector</td><td style="color:#22c55e">裁 → pgvector</td></tr>
+      <tr><td>Sandbox</td><td>7 MB</td><td style="color:#f59e0b">⚠️</td><td style="color:#94a3b8">代码执行节点</td><td style="color:#f59e0b">按需</td></tr>
+      <tr><td>SSRF Proxy</td><td>23 MB</td><td style="color:#64748b">❌</td><td style="color:#64748b">内网不需要</td><td style="color:#22c55e">裁</td></tr>
+      <tr style="border-top:2px solid #334155;font-weight:600">
+        <td>当前全量</td><td>~1.7 GB</td><td>12 容器</td><td>-</td><td>-</td>
+      </tr>
+      <tr style="font-weight:600;color:#22c55e">
+        <td>轻量方案</td><td>~1.2 GB</td><td>7 容器</td><td>Agent+工具+MCP</td><td>改 .env 即可</td>
+      </tr>
+      <tr style="font-weight:600;color:#22d3ee">
+        <td>极简方案</td><td>~760 MB</td><td>5 容器</td><td>Agent+MCP</td><td>需小改代码</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="text-align:center;margin-top:30px;font-size:11px;color:#334155">
+  Dify v1.14.2 · 460K LOC · Apache 2.0 · 142K ⭐ · langgenius/dify · 2026-05-21
+</div>
+
+</body>
+</html>
