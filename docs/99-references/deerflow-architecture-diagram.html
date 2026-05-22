@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeerFlow 2.0 应用架构图 · bytedance/deer-flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM TOKENS
+   ═══════════════════════════════════════════ */
+:root {
+  /* Color Tokens */
+  --bg-primary: #0c0e14;
+  --bg-secondary: #12151e;
+  --bg-surface: #181c28;
+  --bg-elevated: #1e2235;
+  --bg-hover: #252a3a;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-medium: rgba(255,255,255,0.12);
+  --border-strong: rgba(255,255,255,0.2);
+
+  /* Brand: Bytedance Orange / Amber */
+  --accent-primary: #f97316;
+  --accent-light: #fb923c;
+  --accent-dark: #ea580c;
+  --accent-glow: rgba(249,115,22,0.15);
+  --accent-glow-strong: rgba(249,115,22,0.3);
+
+  /* Semantic Colors */
+  --color-green: #22c55e;
+  --color-green-dim: #166534;
+  --color-blue: #3b82f6;
+  --color-blue-dim: #1e3a5f;
+  --color-purple: #a855f7;
+  --color-purple-dim: #3b0764;
+  --color-teal: #14b8a6;
+  --color-teal-dim: #134e4a;
+  --color-red: #ef4444;
+  --color-red-dim: #7f1d1d;
+  --color-amber: #f59e0b;
+  --color-amber-dim: #78350f;
+  --color-cyan: #06b6d4;
+  --color-cyan-dim: #164e63;
+  --color-pink: #ec4899;
+  --color-pink-dim: #831843;
+  --color-indigo: #6366f1;
+  --color-indigo-dim: #312e81;
+  --color-lime: #84cc16;
+  --color-lime-dim: #365314;
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+
+  /* Spacing Scale (4px base) */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Radii */
+  --radius-sm: 6px;  --radius-md: 10px;  --radius-lg: 14px;  --radius-xl: 20px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 30px var(--accent-glow);
+}
+
+/* ═══════════════════════════════════════════
+   BASE RESET & LAYOUT
+   ═══════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: var(--sp-10) var(--sp-6);
+  min-width: 1440px;
+  overflow-x: auto;
+  /* Subtle grid pattern */
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(249,115,22,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(99,102,241,0.03) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════ */
+.header {
+  text-align: center;
+  margin-bottom: var(--sp-10);
+  position: relative;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-medium), transparent);
+}
+.header h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent-primary), var(--color-amber));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--sp-2);
+}
+.header .subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+.header .subtitle span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.metrics {
+  display: flex;
+  gap: var(--sp-6);
+  justify-content: center;
+  margin-top: var(--sp-5);
+}
+.metric {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+}
+.metric svg { width: 14px; height: 14px; }
+.metric strong { color: var(--text-secondary); font-weight: 600; }
+
+/* ═══════════════════════════════════════════
+   LEGEND
+   ═══════════════════════════════════════════ */
+.legend {
+  display: flex;
+  gap: var(--sp-6);
+  justify-content: center;
+  margin: var(--sp-8) 0 var(--sp-6);
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* ═══════════════════════════════════════════
+   ARCHITECTURE LAYOUT
+   ═══════════════════════════════════════════ */
+.arch-container {
+  max-width: 1500px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.section {
+  margin-bottom: var(--sp-4);
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: var(--text-dim);
+  margin-bottom: var(--sp-3);
+  padding-left: var(--sp-1);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.section-label::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  background: var(--accent-primary);
+  border-radius: 2px;
+}
+
+/* Row Layout */
+.row {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: nowrap;
+  margin-bottom: var(--sp-3);
+  position: relative;
+}
+.row-center { align-items: center; }
+
+/* ═══════════════════════════════════════════
+   SERVICE BOX COMPONENT
+   ═══════════════════════════════════════════ */
+.svc {
+  border-radius: var(--radius-md);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 110px;
+  border: 1px solid var(--border-subtle);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+  user-select: none;
+  overflow: hidden;
+}
+.svc::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.25s;
+  background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 70%);
+}
+.svc:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+}
+.svc:hover::before { opacity: 1; }
+
+.svc-icon { font-size: 22px; margin-bottom: var(--sp-1); position: relative; z-index: 1; }
+.svc-name {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; position: relative; z-index: 1;
+}
+.svc-sub {
+  font-size: 10px; color: var(--text-muted); margin-top: 2px;
+  text-align: center; position: relative; z-index: 1;
+}
+.svc-tag {
+  position: absolute; top: -1px; right: -1px;
+  font-size: 9px; padding: 1px 7px;
+  border-radius: 0 var(--radius-md) 0 var(--radius-md);
+  font-weight: 700; z-index: 2;
+  letter-spacing: 0.5px;
+}
+.svc-details {
+  margin-top: var(--sp-2);
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.5;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  position: relative;
+  z-index: 1;
+}
+.svc:hover .svc-details {
+  max-height: 120px;
+  opacity: 1;
+}
+
+/* Color Themes */
+.t-orange { background: linear-gradient(135deg, #7c2d12 0%, #431407 100%); }
+.t-green  { background: linear-gradient(135deg, #14532d 0%, #052e16 100%); }
+.t-blue   { background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%); }
+.t-purple { background: linear-gradient(135deg, #3b0764 0%, #2e1065 100%); }
+.t-teal   { background: linear-gradient(135deg, #134e4a 0%, #042f2e 100%); }
+.t-red    { background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); }
+.t-slate  { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+.t-amber  { background: linear-gradient(135deg, #78350f 0%, #451a03 100%); }
+.t-cyan   { background: linear-gradient(135deg, #164e63 0%, #0c4a6e 100%); }
+.t-indigo { background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%); }
+.t-pink   { background: linear-gradient(135deg, #831843 0%, #500724 100%); }
+.t-lime   { background: linear-gradient(135deg, #365314 0%, #1a2e05 100%); }
+
+/* Active highlight */
+.svc.active-glow {
+  box-shadow: 0 0 20px var(--accent-glow-strong), var(--shadow-md);
+  border-color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════
+   FLOW ARROWS
+   ═══════════════════════════════════════════ */
+.flow-arrow {
+  display: flex;
+  justify-content: center;
+  margin: var(--sp-2) 0;
+  position: relative;
+}
+.flow-arrow svg { overflow: visible; }
+
+.arrow-line {
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+  fill: none;
+  marker-end: url(#arrowhead);
+}
+.arrow-animated {
+  stroke-dasharray: 6 4;
+  animation: flowDash 1.5s linear infinite;
+}
+@keyframes flowDash {
+  to { stroke-dashoffset: -20; }
+}
+
+.arrow-label {
+  font-size: 10px;
+  fill: var(--text-dim);
+  text-anchor: middle;
+  font-family: var(--font-mono);
+}
+
+/* ═══════════════════════════════════════════
+   MIDDLEWARE PIPELINE (VERTICAL)
+   ═══════════════════════════════════════════ */
+.pipeline-container {
+  display: flex;
+  gap: var(--sp-6);
+  align-items: flex-start;
+}
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s;
+  white-space: nowrap;
+  cursor: default;
+  width: 220px;
+}
+.pipeline-step:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+.pipeline-step .step-num {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  min-width: 18px;
+  text-align: right;
+}
+.pipeline-connector {
+  width: 1px;
+  height: 4px;
+  background: var(--border-medium);
+}
+.pipeline-arrow-down {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL PANELS (right side of pipeline)
+   ═══════════════════════════════════════════ */
+.pipeline-details {
+  flex: 1;
+  min-width: 0;
+}
+.detail-group {
+  margin-bottom: var(--sp-3);
+}
+.detail-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--sp-2);
+}
+
+/* ═══════════════════════════════════════════
+   CATEGORY GRID
+   ═══════════════════════════════════════════ */
+.cat-grid {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.cat-box {
+  border-radius: var(--radius-md);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  flex: 1;
+  min-width: 200px;
+  transition: all 0.2s;
+}
+.cat-box:hover {
+  border-color: var(--border-medium);
+}
+.cat-box-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.cat-item {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.cat-item::before {
+  content: '›';
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════
+   SPLIT ROW (for parallel content)
+   ═══════════════════════════════════════════ */
+.split-row {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.split-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ═══════════════════════════════════════════
+   IM CHANNEL CHIPS
+   ═══════════════════════════════════════════ */
+.chip-row {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.chip {
+  font-size: 10px;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  transition: all 0.2s;
+  cursor: default;
+}
+.chip:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-elevated);
+}
+
+/* ═══════════════════════════════════════════
+   MEGA BOX (Lead Agent)
+   ═══════════════════════════════════════════ */
+.mega-box {
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  border: 1.5px solid var(--accent-primary);
+  background: linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.02));
+  position: relative;
+  overflow: hidden;
+}
+.mega-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+}
+.mega-box-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent-light);
+  margin-bottom: var(--sp-1);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.mega-box-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.mega-box-inner {
+  display: flex;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+.mega-box-col {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════
+   FAN-OUT CONNECTOR
+   ═══════════════════════════════════════════ */
+.fan-out {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  height: 50px;
+  margin: var(--sp-2) 0;
+}
+.fan-line {
+  position: absolute;
+  width: 1px;
+  background: var(--border-medium);
+  transform-origin: top center;
+}
+
+/* ═══════════════════════════════════════════
+   INLINE BADGE
+   ═══════════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.badge-orange { background: rgba(249,115,22,0.15); color: var(--accent-light); }
+.badge-green  { background: rgba(34,197,94,0.15); color: var(--color-green); }
+.badge-blue   { background: rgba(59,130,246,0.15); color: var(--color-blue); }
+.badge-purple { background: rgba(168,85,247,0.15); color: var(--color-purple); }
+.badge-teal   { background: rgba(20,184,166,0.15); color: var(--color-teal); }
+.badge-red    { background: rgba(239,68,68,0.15); color: var(--color-red); }
+
+/* ═══════════════════════════════════════════
+   CONFIG TABLE
+   ═══════════════════════════════════════════ */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-2);
+}
+.config-item {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATED PARTICLE BACKGROUND
+   ═══════════════════════════════════════════ */
+#particles-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+.arch-container { position: relative; z-index: 1; }
+.header { position: relative; z-index: 1; }
+.legend { position: relative; z-index: 1; }
+
+/* ═══════════════════════════════════════════
+   SVG DEFINITIONS
+   ═══════════════════════════════════════════ */
+.svg-defs { position: absolute; width: 0; height: 0; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE HINT
+   ═══════════════════════════════════════════ */
+@media (max-width: 1440px) {
+  body { padding: var(--sp-4); }
+}
+
+/* ═══════════════════════════════════════════
+   SECTION CARD WRAPPER
+   ═══════════════════════════════════════════ */
+.section-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-4);
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════
+   MEMORY/SANDBOX SPECIFIC
+   ═══════════════════════════════════════════ */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.flow-node {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.flow-arrow-right {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════
+   TOOLTIP
+   ═══════════════════════════════════════════ */
+.tooltip-container {
+  position: relative;
+}
+.tooltip-container .tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s;
+  pointer-events: none;
+}
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATED GLOW PULSE
+   ═══════════════════════════════════════════ */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+  50% { box-shadow: 0 0 25px var(--accent-glow-strong); }
+}
+.pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════
+   SCROLL HINT
+   ═══════════════════════════════════════════ */
+.scroll-hint {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: var(--sp-4);
+  padding-bottom: var(--sp-8);
+}
+</style>
+</head>
+<body>
+
+<!-- SVG Defs -->
+<svg class="svg-defs">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+    <marker id="arrowhead-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f97316"/>
+    </marker>
+  </defs>
+</svg>
+
+<!-- Particle Background -->
+<canvas id="particles-bg"></canvas>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>🦌 DeerFlow 2.0 应用架构图</h1>
+  <div class="subtitle">
+    <span>bytedance/deer-flow</span> · Super Agent Harness · 完整 AI Agent 应用平台
+  </div>
+  <div class="metrics">
+    <div class="metric">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <strong>25K+</strong> Stars
+    </div>
+    <div class="metric">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      <strong>MIT</strong> License
+    </div>
+    <div class="metric">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Python + TypeScript
+    </div>
+    <div class="metric">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Next.js 16 + React 19
+    </div>
+    <div class="metric">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      28+ 配置项
+    </div>
+  </div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>核心组件 / Core</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>网关 / Gateway</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>前端 / Frontend</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Agent / AI</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div>工具 / Tools</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>中间件 / Middleware</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>IM 渠道 / Channels</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>存储 / Storage</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>沙箱 / Sandbox</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#84cc16"></div>技能 / Skills</div>
+</div>
+
+<!-- ARCHITECTURE -->
+<div class="arch-container">
+
+  <!-- ═══════════════════════════════════════
+       TIER 1: 用户接入层
+       ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">用户接入层 · Access Layer</div>
+
+    <!-- IM Channels + Browser Row -->
+    <div class="split-row">
+      <div class="split-col">
+        <div class="section" style="margin-bottom:0">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;font-weight:600;letter-spacing:1px;">IM 渠道 (6)</div>
+          <div class="chip-row">
+            <div class="chip t-pink">🟢 飞书 Feishu</div>
+            <div class="chip t-purple">🟣 Slack</div>
+            <div class="chip t-blue">🔵 Telegram</div>
+            <div class="chip t-green">🟢 微信 WeChat</div>
+            <div class="chip t-indigo">🔷 企业微信 WeCom</div>
+            <div class="chip t-cyan">🔵 钉钉 DingTalk</div>
+          </div>
+        </div>
+      </div>
+      <div class="split-col">
+        <div class="row row-center">
+          <div class="svc t-amber pulse-glow tooltip-container" style="min-width:160px">
+            <div class="tooltip-text">用户通过浏览器访问 DeerFlow Web 界面</div>
+            <div class="svc-icon">🌐</div>
+            <div class="svc-name">用户浏览器</div>
+            <div class="svc-sub">User Browser</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow Arrow -->
+  <div class="flow-arrow">
+    <svg width="800" height="40">
+      <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#64748b;stop-opacity:0.3"/>
+          <stop offset="50%" style="stop-color:#f97316;stop-opacity:0.8"/>
+          <stop offset="100%" style="stop-color:#64748b;stop-opacity:0.3"/>
+        </linearGradient>
+      </defs>
+      <line x1="50" y1="5" x2="750" y2="5" class="arrow-line arrow-animated" stroke="url(#grad1)"/>
+      <text x="400" y="25" class="arrow-label">HTTP / WebSocket</text>
+    </svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 2: 代理层
+       ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">代理层 · Proxy Layer</div>
+    <div class="row row-center">
+      <div class="svc t-amber tooltip-container" style="min-width:220px">
+        <div class="tooltip-text">Nginx 反向代理，端口 2026</div>
+        <div class="svc-icon">⚡</div>
+        <div class="svc-name">Nginx</div>
+        <div class="svc-sub">:2026 · Reverse Proxy</div>
+        <div class="svc-details">
+          /api/langgraph/* → Gateway<br>
+          /api/* → Gateway<br>
+          / → Frontend
+        </div>
+        <div class="svc-tag" style="background:var(--color-amber-dim);color:var(--color-amber);">:2026</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow Arrow -->
+  <div class="flow-arrow">
+    <svg width="800" height="40">
+      <line x1="200" y1="5" x2="400" y2="5" class="arrow-line arrow-animated" stroke="var(--color-amber)"/>
+      <text x="300" y="25" class="arrow-label">/api/*</text>
+      <line x1="420" y1="5" x2="600" y2="5" class="arrow-line arrow-animated" stroke="var(--color-blue)"/>
+      <text x="510" y="25" class="arrow-label">/</text>
+    </svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 3: 应用层 (Frontend + Gateway)
+       ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">应用层 · Application Layer</div>
+    <div class="row row-center">
+      <!-- Frontend -->
+      <div class="svc t-green tooltip-container" style="min-width:200px">
+        <div class="tooltip-text">Next.js 16 前端应用，React 19 + TypeScript</div>
+        <div class="svc-icon">🎨</div>
+        <div class="svc-name">前端 Frontend</div>
+        <div class="svc-sub">Next.js 16 · :3000</div>
+        <div class="svc-details">
+          Chat 对话界面<br>
+          Thread 会话管理<br>
+          Memory 记忆设置<br>
+          Skill 技能管理
+        </div>
+        <div class="svc-tag" style="background:var(--color-green-dim);color:var(--color-green);">:3000</div>
+      </div>
+
+      <!-- Gateway -->
+      <div class="svc t-blue tooltip-container" style="min-width:260px">
+        <div class="tooltip-text">FastAPI 网关，16 个 Router 模块</div>
+        <div class="svc-icon">🔗</div>
+        <div class="svc-name">网关 Gateway API</div>
+        <div class="svc-sub">FastAPI · :8001</div>
+        <div class="svc-details">
+          Threads · Runs · Memory · Skills<br>
+          MCP · Models · Uploads · Channels<br>
+          16 Router 模块
+        </div>
+        <div class="svc-tag" style="background:var(--color-blue-dim);color:var(--color-blue);">:8001</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow Arrow: Gateway → Lead Agent -->
+  <div class="flow-arrow">
+    <svg width="200" height="45">
+      <line x1="100" y1="2" x2="100" y2="35" class="arrow-line arrow-animated" stroke="var(--accent-primary)" stroke-width="2"/>
+      <text x="130" y="22" class="arrow-label" style="font-size:9px">API Call</text>
+    </svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 4: LEAD AGENT (CORE)
+       ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">核心引擎 · Core Engine</div>
+    <div class="mega-box pulse-glow">
+      <div class="mega-box-title">🦌 Lead Agent (LangGraph)</div>
+      <div class="mega-box-sub">make_lead_agent() · 动态模型选择 · 系统提示词组装</div>
+
+      <div class="mega-box-inner">
+        <!-- Middleware Pipeline -->
+        <div class="mega-box-col">
+          <div style="font-size:10px;color:var(--color-amber);font-weight:700;margin-bottom:8px;letter-spacing:1px;">
+            中间件管道 · MIDDLEWARE PIPELINE (18)
+          </div>
+          <div style="display:flex;gap:16px;">
+            <div class="pipeline" style="gap:1px;">
+              <div class="pipeline-step"><span class="step-num">01</span> ThreadData</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">02</span> Uploads</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">03</span> Sandbox</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">04</span> LLMError</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">05</span> Guardrail</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">06</span> SandboxAudit</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">07</span> ToolError</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">08</span> DynamicContext</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">09</span> Summarization</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">10</span> TodoList</div>
+            </div>
+            <div class="pipeline" style="gap:1px;">
+              <div class="pipeline-step"><span class="step-num">11</span> TokenUsage</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">12</span> Title</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">13</span> Memory</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">14</span> ViewImage</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">15</span> DeferredFilter</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">16</span> SubagentLimit</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">17</span> LoopDetection</div>
+              <div class="pipeline-connector"></div>
+              <div class="pipeline-step"><span class="step-num">18</span> Clarification</div>
+              <div style="margin-top:4px;text-align:center;font-size:10px;color:var(--color-amber);">
+                ▼ 执行引擎
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompt Assembly -->
+        <div class="mega-box-col" style="max-width:280px;">
+          <div style="font-size:10px;color:var(--color-purple);font-weight:700;margin-bottom:8px;letter-spacing:1px;">
+            提示词组装 · PROMPT ASSEMBLY
+          </div>
+          <div class="flow-diagram" style="flex-direction:column;gap:6px;">
+            <div class="flow-node" style="border-color:var(--color-lime);">📄 Skills 注入 (SKILL.md)</div>
+            <div style="color:var(--text-dim);">↓</div>
+            <div class="flow-node" style="border-color:var(--color-indigo);">🧠 Memory 注入 (≤2000 tokens)</div>
+            <div style="color:var(--text-dim);">↓</div>
+            <div class="flow-node" style="border-color:var(--color-teal);">📁 Working Dir 上下文</div>
+            <div style="color:var(--text-dim);">↓</div>
+            <div class="flow-node" style="border-color:var(--accent-primary);background:rgba(249,115,22,0.1);">🎯 System Prompt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fan-out Arrow -->
+  <div class="flow-arrow">
+    <svg width="900" height="50">
+      <line x1="450" y1="2" x2="150" y2="40" class="arrow-line arrow-animated" stroke="var(--color-teal)"/>
+      <text x="220" y="30" class="arrow-label">Tool Call</text>
+      <line x1="450" y1="2" x2="450" y2="40" class="arrow-line arrow-animated" stroke="var(--color-purple)"/>
+      <text x="490" y="30" class="arrow-label">SubAgent</text>
+      <line x1="450" y1="2" x2="750" y2="40" class="arrow-line arrow-animated" stroke="var(--color-indigo)"/>
+      <text x="680" y="30" class="arrow-label">MCP Call</text>
+    </svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 5: 子系统
+       ═══════════════════════════════════════ -->
+  <div class="split-row">
+
+    <!-- LEFT: Tool Ecosystem -->
+    <div class="split-col">
+      <div class="section-card">
+        <div class="section-label" style="margin-bottom:12px;">工具生态 · Tool Ecosystem</div>
+        <div class="cat-grid" style="flex-direction:column;">
+          <div class="cat-box t-teal">
+            <div class="cat-box-title" style="color:var(--color-teal);">🖥️ 沙箱工具 Sandbox</div>
+            <div class="cat-item">bash</div>
+            <div class="cat-item">ls</div>
+            <div class="cat-item">read_file</div>
+            <div class="cat-item">write_file</div>
+            <div class="cat-item">str_replace</div>
+          </div>
+          <div class="cat-box t-blue">
+            <div class="cat-box-title" style="color:var(--color-blue);">🔧 内置工具 Built-in</div>
+            <div class="cat-item">present_files</div>
+            <div class="cat-item">ask_clarification</div>
+            <div class="cat-item">view_image</div>
+            <div class="cat-item">task</div>
+          </div>
+          <div class="cat-box t-purple">
+            <div class="cat-box-title" style="color:var(--color-purple);">🌐 社区工具 Community</div>
+            <div class="cat-item">Tavily Search</div>
+            <div class="cat-item">Jina AI Reader</div>
+            <div class="cat-item">Firecrawl</div>
+            <div class="cat-item">DuckDuckGo</div>
+          </div>
+          <div class="cat-box t-indigo">
+            <div class="cat-box-title" style="color:var(--color-indigo);">🔌 MCP 工具</div>
+            <div class="cat-item">Any MCP Server</div>
+            <div class="cat-item">stdio / SSE / HTTP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: SubAgent System -->
+    <div class="split-col">
+      <div class="section-card">
+        <div class="section-label" style="margin-bottom:12px;">子代理系统 · SubAgent System</div>
+        <div class="flow-diagram" style="flex-direction:column;gap:8px;align-items:stretch;">
+          <div style="display:flex;gap:8px;">
+            <div class="svc t-purple" style="flex:1;min-width:auto;padding:8px 12px;">
+              <div class="svc-name" style="font-size:11px;">🤖 general-purpose</div>
+              <div class="svc-sub">通用子代理</div>
+            </div>
+            <div class="svc t-red" style="flex:1;min-width:auto;padding:8px 12px;">
+              <div class="svc-name" style="font-size:11px;">⌨️ bash</div>
+              <div class="svc-sub">命令行子代理</div>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:10px;color:var(--text-dim);">
+            ── 并发控制 ──
+          </div>
+          <div class="chip-row" style="justify-content:center;">
+            <div class="chip" style="font-family:var(--font-mono);">
+              <span class="badge badge-orange">MAX 3</span> 并发
+            </div>
+            <div class="chip" style="font-family:var(--font-mono);">
+              <span class="badge badge-red">15min</span> 超时
+            </div>
+            <div class="chip" style="font-family:var(--font-mono);">
+              <span class="badge badge-blue">POLL</span> 后台轮询
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill System -->
+      <div class="section-card">
+        <div class="section-label" style="margin-bottom:12px;">技能系统 · Skill System</div>
+        <div class="flow-diagram" style="flex-direction:column;gap:6px;align-items:stretch;">
+          <div class="flow-node" style="border-color:var(--color-lime);">📄 SKILL.md 文件 → 解析 → 注入 Prompt</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <div class="flow-node" style="border-color:var(--color-red);flex:1;">🔒 安全扫描 (LLM)</div>
+            <span style="color:var(--text-dim);">→</span>
+            <div class="flow-node" style="border-color:var(--color-lime);flex:1;">📦 按需加载 (Progressive)</div>
+          </div>
+          <div style="margin-top:6px;">
+            <div style="font-size:9px;color:var(--text-dim);margin-bottom:4px;">21 内置技能 (部分):</div>
+            <div class="chip-row">
+              <div class="chip">🔍 deep-research</div>
+              <div class="chip">📊 ppt-generation</div>
+              <div class="chip">📝 report</div>
+              <div class="chip">💻 code</div>
+              <div class="chip">🌐 web-search</div>
+              <div class="chip">+16 more</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: MCP + Memory -->
+    <div class="split-col">
+      <!-- MCP Integration -->
+      <div class="section-card">
+        <div class="section-label" style="margin-bottom:12px;">MCP 集成 · Model Context Protocol</div>
+        <div class="flow-diagram" style="flex-direction:column;gap:8px;align-items:stretch;">
+          <div class="flow-node" style="border-color:var(--color-indigo);">
+            ⚙️ extensions_config.json
+          </div>
+          <div style="display:flex;gap:6px;justify-content:center;">
+            <div class="chip"><span class="badge badge-blue">stdio</span></div>
+            <div class="chip"><span class="badge badge-purple">SSE</span></div>
+            <div class="chip"><span class="badge badge-teal">HTTP</span></div>
+          </div>
+          <div class="svc t-indigo" style="padding:10px;min-width:auto;">
+            <div class="svc-name" style="font-size:11px;">🗄️ Session Pool</div>
+            <div class="svc-sub">LRU · 256 max · OAuth</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Memory System -->
+      <div class="section-card">
+        <div class="section-label" style="margin-bottom:12px;">记忆系统 · Memory System</div>
+        <div class="flow-diagram" style="flex-direction:column;gap:6px;align-items:stretch;">
+          <div class="flow-node" style="border-color:var(--color-indigo);">🧠 LLM 事实提取</div>
+          <div style="display:flex;gap:6px;">
+            <div class="flow-node" style="border-color:var(--color-amber);flex:1;">📊 置信度评分<br>threshold: 0.7</div>
+            <div class="flow-node" style="border-color:var(--color-green);flex:1;">💾 JSON 存储<br>30s debounce</div>
+          </div>
+          <div class="flow-node" style="border-color:var(--accent-primary);background:rgba(249,115,22,0.08);">
+            📤 Prompt 注入 ≤ 2000 tokens
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 6: 沙箱系统
+       ═══════════════════════════════════════ -->
+  <div class="section" style="margin-top:8px;">
+    <div class="section-label">沙箱执行 · Sandbox Execution</div>
+    <div class="section-card" style="padding:16px 20px;">
+      <div class="row row-center" style="margin-bottom:0;">
+        <div class="svc t-slate tooltip-container" style="min-width:160px">
+          <div class="tooltip-text">抽象沙箱接口，支持多种实现</div>
+          <div class="svc-icon">📦</div>
+          <div class="svc-name">Sandbox Interface</div>
+          <div class="svc-sub">Abstract</div>
+        </div>
+
+        <div style="font-size:18px;color:var(--text-dim);">→</div>
+
+        <div class="svc t-green tooltip-container" style="min-width:160px">
+          <div class="tooltip-text">本地文件系统沙箱</div>
+          <div class="svc-icon">💻</div>
+          <div class="svc-name">LocalSandbox</div>
+          <div class="svc-sub">Filesystem Provider</div>
+        </div>
+
+        <div class="svc t-blue tooltip-container" style="min-width:160px">
+          <div class="tooltip-text">Docker/容器沙箱</div>
+          <div class="svc-icon">🐳</div>
+          <div class="svc-name">AioSandbox</div>
+          <div class="svc-sub">Docker/Container</div>
+        </div>
+
+        <div style="font-size:18px;color:var(--text-dim);">→</div>
+
+        <div class="svc t-red tooltip-container" style="min-width:200px">
+          <div class="tooltip-text">虚拟路径映射</div>
+          <div class="svc-icon">📂</div>
+          <div class="svc-name">Virtual Paths</div>
+          <div class="svc-sub">/mnt/user-data/...</div>
+          <div class="svc-details">
+            /mnt/user-data/workspace<br>
+            /mnt/user-data/uploads<br>
+            /mnt/user-data/outputs
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       TIER 7: 配置系统
+       ═══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">配置系统 · Configuration</div>
+    <div class="section-card" style="padding:16px 20px;">
+      <div class="split-row" style="margin-bottom:0;">
+        <div class="split-col">
+          <div style="font-size:10px;color:var(--color-amber);font-weight:700;margin-bottom:8px;">
+            📄 config.yaml (28+ 配置节)
+          </div>
+          <div class="config-grid">
+            <div class="config-item">models</div>
+            <div class="config-item">agents</div>
+            <div class="config-item">tools</div>
+            <div class="config-item">memory</div>
+            <div class="config-item">sandbox</div>
+            <div class="config-item">skills</div>
+            <div class="config-item">channels</div>
+            <div class="config-item">middleware</div>
+            <div class="config-item">mcp_servers</div>
+            <div class="config-item">subagents</div>
+            <div class="config-item">logging</div>
+            <div class="config-item">guardrails</div>
+            <div class="config-item">server</div>
+            <div class="config-item">cors</div>
+            <div class="config-item">uploads</div>
+            <div class="config-item">summarization</div>
+            <div class="config-item">+12 more</div>
+          </div>
+        </div>
+        <div class="split-col" style="max-width:300px;">
+          <div style="font-size:10px;color:var(--color-indigo);font-weight:700;margin-bottom:8px;">
+            🔧 extensions_config.json
+          </div>
+          <div style="background:var(--bg-surface);border-radius:var(--radius-sm);padding:10px;border:1px solid var(--border-subtle);">
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);line-height:1.6;">
+              <span style="color:var(--color-purple);">{</span><br>
+              &nbsp;&nbsp;<span style="color:var(--color-teal);">"mcp_servers"</span>: [...],<br>
+              &nbsp;&nbsp;<span style="color:var(--color-teal);">"skills"</span>: [...],<br>
+              &nbsp;&nbsp;<span style="color:var(--color-teal);">"tools"</span>: [...]<br>
+              <span style="color:var(--color-purple);">}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Scroll Hint -->
+<div class="scroll-hint">
+  ↕ 滚动查看完整架构 · Scroll for full architecture · Hover 查看详情 · All data flows shown with animated arrows
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT: Particle Background + Interactions
+     ═══════════════════════════════════════════ -->
+<script>
+(function() {
+  // Particle Background
+  const canvas = document.getElementById('particles-bg');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  const PARTICLE_COUNT = 40;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = document.documentElement.scrollHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Create particles
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.3 + 0.1
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(249, 115, 22, ${p.alpha})`;
+      ctx.fill();
+    });
+
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(249, 115, 22, ${0.05 * (1 - dist / 150)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // Resize canvas when content changes height
+  const observer = new MutationObserver(resize);
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Interactive hover glow effect
+  document.querySelectorAll('.svc, .mega-box, .section-card').forEach(el => {
+    el.addEventListener('mouseenter', function() {
+      this.style.transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)';
+    });
+  });
+
+  // Pipeline step click highlight
+  document.querySelectorAll('.pipeline-step').forEach(step => {
+    step.addEventListener('click', function() {
+      document.querySelectorAll('.pipeline-step').forEach(s => {
+        s.style.borderColor = 'var(--border-subtle)';
+        s.style.color = 'var(--text-secondary)';
+        s.style.background = 'var(--bg-surface)';
+      });
+      this.style.borderColor = 'var(--accent-primary)';
+      this.style.color = 'var(--accent-light)';
+      this.style.background = 'rgba(249,115,22,0.1)';
+    });
+  });
+})();
+</script>
+</body>
+</html>
