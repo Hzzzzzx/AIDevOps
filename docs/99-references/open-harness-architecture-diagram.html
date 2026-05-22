@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Harness 架构图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 40px 20px;
+    min-width: 1200px;
+  }
+  h1 { text-align: center; font-size: 28px; margin-bottom: 8px; color: #f8fafc; letter-spacing: 1px; }
+  .subtitle { text-align: center; font-size: 14px; color: #94a3b8; margin-bottom: 40px; }
+
+  /* Legend */
+  .legend {
+    display: flex; gap: 24px; justify-content: center; margin-bottom: 30px;
+    font-size: 13px; color: #94a3b8; flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* Architecture sections */
+  .section { position: relative; margin: 0 auto 20px auto; max-width: 1300px; }
+  .section-label {
+    font-size: 13px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 2px; color: #64748b; margin-bottom: 10px; padding-left: 4px;
+  }
+
+  /* Row layout */
+  .row { display: flex; gap: 16px; justify-content: center; flex-wrap: nowrap; margin-bottom: 16px; }
+
+  /* Service box */
+  .svc {
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; min-width: 120px;
+    border: 1.5px solid rgba(255,255,255,0.08);
+    transition: all 0.2s;
+  }
+  .svc:hover {
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .svc-icon { font-size: 24px; margin-bottom: 6px; }
+  .svc-name { font-size: 13px; font-weight: 600; color: #f1f5f9; white-space: nowrap; }
+  .svc-sub { font-size: 11px; color: #64748b; margin-top: 2px; text-align: center; }
+  .svc-tag {
+    position: absolute; top: -8px; right: -8px;
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+  }
+  .svc-details {
+    margin-top: 8px; font-size: 10px; color: #475569;
+    text-align: center; line-height: 1.4;
+  }
+
+  /* Color themes */
+  .blue { background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%); }
+  .green { background: linear-gradient(135deg, #14532d 0%, #052e16 100%); }
+  .purple { background: linear-gradient(135deg, #3b0764 0%, #2e1065 100%); }
+  .orange { background: linear-gradient(135deg, #7c2d12 0%, #431407 100%); }
+  .teal { background: linear-gradient(135deg, #134e4a 0%, #042f2e 100%); }
+  .red { background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); }
+  .slate { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+  .amber { background: linear-gradient(135deg, #78350f 0%, #451a03 100%); }
+  .indigo { background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%); }
+  .rose { background: linear-gradient(135deg, #4c0519 0%, #2d0210 100%); }
+  .cyan { background: linear-gradient(135deg, #164e63 0%, #083344 100%); }
+  .emerald { background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); }
+
+  .tag-core { background: #22c55e; color: #052e16; }
+  .tag-gap { background: #ef4444; color: #fff; }
+  .tag-existing { background: #3b82f6; color: #fff; }
+  .tag-missing { background: #f97316; color: #fff; }
+
+  /* Arrow connector */
+  .arrow-zone {
+    display: flex; justify-content: center; align-items: center;
+    height: 36px; gap: 40px; margin: 4px 0;
+  }
+  .arrow-down {
+    width: 2px; height: 36px; position: relative;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .arrow-down::before { content: ''; display: block; width: 2px; height: 28px; background: #334155; }
+  .arrow-down::after {
+    content: ''; display: block;
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-top: 8px solid #334155;
+  }
+  .arrow-label {
+    font-size: 10px; color: #475569; white-space: nowrap;
+    position: absolute; left: 14px; top: 8px;
+  }
+
+  /* Data grid */
+  .data-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px; max-width: 1300px; margin: 0 auto 20px auto;
+  }
+  .data-item {
+    background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+    padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 6px;
+  }
+  .data-item .emoji { font-size: 14px; }
+
+  /* Stats table */
+  .stats-table {
+    max-width: 1300px; margin: 20px auto 0 auto;
+    border-collapse: collapse; width: 100%; font-size: 13px;
+  }
+  .stats-table th {
+    text-align: left; padding: 10px 14px;
+    background: #1e293b; color: #94a3b8;
+    border-bottom: 2px solid #334155; font-weight: 600;
+  }
+  .stats-table td { padding: 10px 14px; border-bottom: 1px solid #1e293b; }
+  .stats-table tr:hover td { background: rgba(30,41,59,0.5); }
+
+  /* Section divider */
+  .divider { border: none; border-top: 1px solid #1e293b; margin: 30px auto; max-width: 1300px; }
+
+  /* Flow diagram */
+  .flow-diagram {
+    max-width: 1300px; margin: 0 auto;
+    background: #0c1222; border-radius: 12px; padding: 24px;
+    border: 1px solid #1e293b;
+  }
+  .flow-step { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .flow-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #334155; color: #94a3b8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .flow-text { font-size: 12px; color: #94a3b8; }
+  .flow-text code {
+    background: #1e293b; padding: 1px 6px; border-radius: 3px;
+    color: #22d3ee; font-size: 11px;
+  }
+  .flow-text .highlight { color: #fbbf24; font-weight: 600; }
+  .flow-text .green-hl { color: #4ade80; font-weight: 600; }
+
+  /* Horizontal flow arrows */
+  .flow-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .flow-arrow { font-size: 18px; color: #334155; }
+  .flow-label { font-size: 10px; color: #475569; text-align: center; max-width: 80px; }
+
+  /* Event timeline */
+  .event-timeline {
+    max-width: 1300px; margin: 0 auto;
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+  }
+  .event-chip {
+    border-radius: 6px; padding: 6px 12px; font-size: 11px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    border: 1px solid rgba(255,255,255,0.06);
+    min-width: 100px;
+  }
+  .event-chip .etype { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+  .event-chip .ename { font-weight: 600; color: #f1f5f9; font-size: 11px; }
+
+  /* Capability matrix */
+  .cap-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px; max-width: 1300px; margin: 0 auto 16px auto;
+  }
+  .cap-item {
+    background: #1e293b; border-radius: 8px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid #334155;
+  }
+  .cap-icon { font-size: 18px; flex-shrink: 0; }
+  .cap-info { flex: 1; }
+  .cap-name { font-size: 12px; font-weight: 600; color: #f1f5f9; }
+  .cap-desc { font-size: 10px; color: #64748b; margin-top: 2px; }
+  .cap-status {
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 4px; white-space: nowrap;
+  }
+  .cap-status.yes { background: #052e16; color: #4ade80; }
+  .cap-status.no { background: #450a0a; color: #f87171; }
+
+  /* Wide box */
+  .wide-box {
+    max-width: 1300px; margin: 0 auto 16px auto;
+    background: #1e293b; border-radius: 10px; padding: 16px 24px;
+    border: 1px solid #334155;
+  }
+
+  /* Bidirectional arrows */
+  .bi-arrow { color: #475569; font-size: 16px; display: flex; align-items: center; }
+</style>
+</head>
+<body>
+
+<h1>⚡ Open Harness 完整架构图</h1>
+<p class="subtitle">TypeScript AI Agent 工作流框架 · ~24K LOC · 事件溯源 + VCR 录制 + 时间旅行 · Effect 生态</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>已有能力</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>缺失/差距</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>核心模块</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>引擎层</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>外部依赖</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span>基础设施</div>
+</div>
+
+<!-- ============ Layer 1: Public API ============ -->
+<div class="section">
+  <div class="section-label">🌐 公共 API 层 (@open-harness/sdk)</div>
+  <div class="row">
+    <div class="svc cyan" style="min-width:680px">
+      <span class="svc-tag tag-existing">SDK</span>
+      <div class="svc-icon">📦</div>
+      <div class="svc-name">Public API</div>
+      <div class="svc-sub">Plain TypeScript + Zod · Promise 返回 · 不暴露 Effect</div>
+      <div class="svc-details">
+        <code style="background:#0f172a;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:10px">agent()</code>
+        <code style="background:#0f172a;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:10px">workflow()</code>
+        <code style="background:#0f172a;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:10px">phase()</code>
+        <code style="background:#0f172a;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:10px">run()</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">调用</span></div>
+  <div class="arrow-down"><span class="arrow-label">配置</span></div>
+  <div class="arrow-down"><span class="arrow-label">构建</span></div>
+</div>
+
+<!-- ============ Layer 2: Core Triad ============ -->
+<div class="section">
+  <div class="section-label">🧱 核心三层 (packages/core · ~7,063 LOC)</div>
+  <div class="row">
+    <div class="svc blue" style="min-width:200px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">📐</div>
+      <div class="svc-name">Domain Types</div>
+      <div class="svc-sub">领域模型 · 纯类型定义</div>
+      <div class="svc-details">
+        Events（事件）<br>
+        Provider（提供者）<br>
+        Agent（代理）<br>
+        Workflow（工作流）<br>
+        Phase（阶段）
+      </div>
+    </div>
+    <div class="svc green" style="min-width:200px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">🏷️</div>
+      <div class="svc-name">Service Tags</div>
+      <div class="svc-sub">Effect 服务层 · 依赖注入</div>
+      <div class="svc-details">
+        EventStore（事件存储）<br>
+        Provider（提供者接口）<br>
+        ID / Hash（标识哈希）<br>
+        <span style="color:#475569">Tag → Layer → Runtime</span>
+      </div>
+    </div>
+    <div class="svc purple" style="min-width:200px">
+      <span class="svc-tag tag-core">核心</span>
+      <div class="svc-icon">⚡</div>
+      <div class="svc-name">Programs / Effects</div>
+      <div class="svc-sub">业务逻辑 · Effect 程序</div>
+      <div class="svc-details">
+        Runtime（运行时）<br>
+        Execute（执行）<br>
+        Run（运行）<br>
+        <span style="color:#475569">Effect.gen → Effect.runPromise</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">编排</span></div>
+  <div class="arrow-down"><span class="arrow-label">HTTP/SSE</span></div>
+  <div class="arrow-down"><span class="arrow-label">Hooks</span></div>
+</div>
+
+<!-- ============ Layer 3: Application ============ -->
+<div class="section">
+  <div class="section-label">🚀 应用层</div>
+  <div class="row">
+    <div class="svc indigo" style="min-width:240px">
+      <span class="svc-tag tag-existing">引擎</span>
+      <div class="svc-icon">⚙️</div>
+      <div class="svc-name">Engine</div>
+      <div class="svc-sub">packages/core 引擎模块</div>
+      <div class="svc-details">
+        runtime · workflow · phase<br>
+        agent · execute · run<br>
+        provider · recorder · playback
+      </div>
+    </div>
+    <div class="svc teal" style="min-width:240px">
+      <span class="svc-tag tag-existing">服务端</span>
+      <div class="svc-icon">🖥️</div>
+      <div class="svc-name">Server</div>
+      <div class="svc-sub">packages/server · ~3,000 LOC</div>
+      <div class="svc-details">
+        HTTP API · SSE 推送<br>
+        Routes · 端口 42069<br>
+        Session 管理
+      </div>
+    </div>
+    <div class="svc emerald" style="min-width:240px">
+      <span class="svc-tag tag-existing">客户端</span>
+      <div class="svc-icon">📱</div>
+      <div class="svc-name">Client</div>
+      <div class="svc-sub">packages/client · ~2,500 LOC</div>
+      <div class="svc-details">
+        HTTP + SSE 连接<br>
+        React Hooks · 18 个 Hook<br>
+        状态管理 + 事件订阅
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-zone">
+  <div class="arrow-down"><span class="arrow-label">API 调用</span></div>
+  <div class="arrow-down"><span class="arrow-label">存储</span></div>
+</div>
+
+<!-- ============ Layer 4: Infrastructure ============ -->
+<div class="section">
+  <div class="section-label">💾 基础设施层</div>
+  <div class="row">
+    <div class="svc orange" style="min-width:240px">
+      <span class="svc-tag tag-existing">唯一</span>
+      <div class="svc-icon">🤖</div>
+      <div class="svc-name">Provider: Anthropic</div>
+      <div class="svc-sub">唯一支持的 LLM 提供者</div>
+      <div class="svc-details">
+        Claude API 集成<br>
+        <span style="color:#f87171">Recorder</span>（VCR 录制）<br>
+        <span style="color:#f87171">Playback</span>（VCR 回放）<br>
+        <span style="color:#64748b">流式 streaming 支持</span>
+      </div>
+    </div>
+    <div class="svc blue" style="min-width:240px">
+      <span class="svc-tag tag-existing">存储</span>
+      <div class="svc-icon">🗄️</div>
+      <div class="svc-name">Storage (LibSQL)</div>
+      <div class="svc-sub">嵌入式数据库 · 事件持久化</div>
+      <div class="svc-details">
+        sessions（会话）<br>
+        events（事件流）<br>
+        snapshots（快照）<br>
+        recordings（录制数据）
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Workflow Execution Flow ============ -->
+<div class="section">
+  <div class="section-label">🔄 工作流执行模型</div>
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-text">输入 → <code>workflow.start(state)</code> → emit <span class="green-hl">state:intent</span></div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-text">→ <span class="highlight">Phase.entered</span> → Agent 读取 state → 生成 prompt</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-text">→ <code>provider.stream()</code> → <span class="green-hl">textDelta</span> / <span class="green-hl">thinkingDelta</span> / <span class="highlight">tool</span> 事件流</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-text">→ Zod 校验结构化输出 → <code>agent.update(output, draft)</code></div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-text">→ emit <span class="green-hl">state:intent</span> / <span class="green-hl">state:checkpoint</span></div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">6</div>
+      <div class="flow-text">→ <span class="highlight">Phase.next</span>（顺序 / 并行 / 条件 / 循环）</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">7</div>
+      <div class="flow-text">→ [<span style="color:#f59e0b;font-weight:600">HITL</span>: approval / choice 可能中断等待人类输入]</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">8</div>
+      <div class="flow-text">→ <span class="highlight">Phase.exited</span> → 下一阶段 或 <span class="green-hl">Workflow.completed</span> ✅</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Event System ============ -->
+<div class="section">
+  <div class="section-label">📡 事件系统（15 种事件类型 · 不可变事件源）</div>
+  <div class="event-timeline">
+    <div class="event-chip green">
+      <span class="etype">Workflow</span>
+      <span class="ename">started</span>
+    </div>
+    <div class="event-chip green">
+      <span class="etype">Workflow</span>
+      <span class="ename">completed</span>
+    </div>
+    <div class="event-chip blue">
+      <span class="etype">Phase</span>
+      <span class="ename">entered</span>
+    </div>
+    <div class="event-chip blue">
+      <span class="etype">Phase</span>
+      <span class="ename">exited</span>
+    </div>
+    <div class="event-chip purple">
+      <span class="etype">Agent</span>
+      <span class="ename">started</span>
+    </div>
+    <div class="event-chip purple">
+      <span class="etype">Agent</span>
+      <span class="ename">completed</span>
+    </div>
+    <div class="event-chip teal">
+      <span class="etype">State</span>
+      <span class="ename">intent</span>
+    </div>
+    <div class="event-chip teal">
+      <span class="etype">State</span>
+      <span class="ename">checkpoint</span>
+    </div>
+    <div class="event-chip teal">
+      <span class="etype">State</span>
+      <span class="ename">forked</span>
+    </div>
+    <div class="event-chip orange">
+      <span class="etype">Stream</span>
+      <span class="ename">textDelta</span>
+    </div>
+    <div class="event-chip orange">
+      <span class="etype">Stream</span>
+      <span class="ename">thinkingDelta</span>
+    </div>
+    <div class="event-chip indigo">
+      <span class="etype">Tool</span>
+      <span class="ename">called</span>
+    </div>
+    <div class="event-chip indigo">
+      <span class="etype">Tool</span>
+      <span class="ename">result</span>
+    </div>
+    <div class="event-chip amber">
+      <span class="etype">HITL</span>
+      <span class="ename">inputRequested</span>
+    </div>
+    <div class="event-chip amber">
+      <span class="etype">HITL</span>
+      <span class="ename">inputReceived</span>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Capability Matrix ============ -->
+<div class="section">
+  <div class="section-label">✅ 能力矩阵：已有 vs 缺失（AIDevOps 视角）</div>
+  <div class="cap-grid">
+    <div class="cap-item">
+      <div class="cap-icon">📜</div>
+      <div class="cap-info">
+        <div class="cap-name">事件溯源 Event Sourcing</div>
+        <div class="cap-desc">所有操作记录为不可变事件</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">📼</div>
+      <div class="cap-info">
+        <div class="cap-name">VCR 录制 / 回放</div>
+        <div class="cap-desc">录制 Provider 调用，免费回放</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">⏪</div>
+      <div class="cap-info">
+        <div class="cap-name">时间旅行 Time Travel</div>
+        <div class="cap-desc">GET 任意事件位置的状态快照</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">🌿</div>
+      <div class="cap-info">
+        <div class="cap-name">会话分叉 Session Fork</div>
+        <div class="cap-desc">克隆事件流，从任意点分支</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">🧑‍💻</div>
+      <div class="cap-info">
+        <div class="cap-name">人机协作 HITL</div>
+        <div class="cap-desc">人类审批 / 选择中断点</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">⚡</div>
+      <div class="cap-info">
+        <div class="cap-name">并行执行 Parallel</div>
+        <div class="cap-desc">Phase forEach + 并行计数</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item">
+      <div class="cap-icon">🔍</div>
+      <div class="cap-info">
+        <div class="cap-name">结构化输出 Zod</div>
+        <div class="cap-desc">Zod Schema 校验 Agent 输出</div>
+      </div>
+      <div class="cap-status yes">✅ 已有</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">📡</div>
+      <div class="cap-info">
+        <div class="cap-name">MCP 支持</div>
+        <div class="cap-desc">Model Context Protocol 集成</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🪝</div>
+      <div class="cap-info">
+        <div class="cap-name">Hook 系统</div>
+        <div class="cap-desc">生命周期钩子拦截器</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🎯</div>
+      <div class="cap-info">
+        <div class="cap-name">Skill 系统</div>
+        <div class="cap-desc">可复用技能模块 / 技能注册</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🤖</div>
+      <div class="cap-info">
+        <div class="cap-name">SubAgent 子代理</div>
+        <div class="cap-desc">多代理协作 / 委派执行</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">👥</div>
+      <div class="cap-info">
+        <div class="cap-name">多租户 Multi-tenant</div>
+        <div class="cap-desc">租户隔离 / 资源隔离</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🔐</div>
+      <div class="cap-info">
+        <div class="cap-name">认证 / RBAC</div>
+        <div class="cap-desc">权限控制 / 角色管理</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🖼️</div>
+      <div class="cap-info">
+        <div class="cap-name">Web UI</div>
+        <div class="cap-desc">可视化操作界面</div>
+      </div>
+      <div class="cap-status no">❌ 缺失</div>
+    </div>
+    <div class="cap-item" style="border-color:#7f1d1d">
+      <div class="cap-icon">🔌</div>
+      <div class="cap-info">
+        <div class="cap-name">多 Provider 支持</div>
+        <div class="cap-desc">仅 Anthropic，无 OpenAI/智谱等</div>
+      </div>
+      <div class="cap-status no">❌ 仅一个</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ LOC Stats ============ -->
+<div class="section">
+  <div class="section-label">📊 代码规模统计</div>
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>模块</th>
+        <th>包路径</th>
+        <th>LOC</th>
+        <th>占比</th>
+        <th>职责</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="color:#3b82f6;font-weight:600">Core</td>
+        <td><code style="background:#1e293b;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:11px">packages/core</code></td>
+        <td>~7,063</td>
+        <td>29%</td>
+        <td>领域类型 + 服务标签 + Effect 程序 + 引擎</td>
+      </tr>
+      <tr>
+        <td style="color:#14b8a6;font-weight:600">Server</td>
+        <td><code style="background:#1e293b;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:11px">packages/server</code></td>
+        <td>~3,000</td>
+        <td>13%</td>
+        <td>HTTP API + SSE + 路由 + Session 管理</td>
+      </tr>
+      <tr>
+        <td style="color:#4ade80;font-weight:600">Client</td>
+        <td><code style="background:#1e293b;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:11px">packages/client</code></td>
+        <td>~2,500</td>
+        <td>10%</td>
+        <td>HTTP + SSE 连接 + React 18 Hooks</td>
+      </tr>
+      <tr>
+        <td style="color:#a78bfa;font-weight:600">Apps</td>
+        <td><code style="background:#1e293b;padding:1px 6px;border-radius:3px;color:#22d3ee;font-size:11px">apps/*</code></td>
+        <td>~4,039</td>
+        <td>17%</td>
+        <td>示例应用 + Demo + 测试工具</td>
+      </tr>
+      <tr style="border-top:2px solid #334155;font-weight:600">
+        <td colspan="2">总计</td>
+        <td>~24,000</td>
+        <td>100%</td>
+        <td>Packages (24K) + Apps (4K) ≈ 28K 总量</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<hr class="divider">
+
+<!-- ============ AIDevOps Gap Analysis ============ -->
+<div class="section">
+  <div class="section-label">🔍 AIDevOps 差距分析</div>
+  <div class="flow-diagram">
+    <div style="text-align:center;margin-bottom:16px;font-size:13px;color:#94a3b8">
+      Open Harness 现有能力 → AIDevOps 所需能力
+    </div>
+    <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
+      <!-- Left: Strengths -->
+      <div style="flex:1;min-width:280px;max-width:400px">
+        <div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:10px;text-align:center">✅ 核心优势（可直接复用）</div>
+        <div style="background:#052e16;border-radius:8px;padding:14px;font-size:11px;line-height:1.8;color:#86efac">
+          <div>• <b>事件溯源</b>：完整审计链，所有操作可追溯</div>
+          <div>• <b>VCR 录制</b>：零成本回放，测试/开发利器</div>
+          <div>• <b>时间旅行</b>：任意状态回溯，调试神技</div>
+          <div>• <b>会话分叉</b>：探索多策略，不破坏主线</div>
+          <div>• <b>Effect 生态</b>：类型安全 + 依赖注入 + 组合</div>
+          <div>• <b>Zod 校验</b>：结构化输出保证</div>
+          <div>• <b>HITL</b>：人机协作审批机制</div>
+          <div>• <b>TypeScript</b>：前后端统一类型</div>
+        </div>
+      </div>
+      <!-- Right: Gaps -->
+      <div style="flex:1;min-width:280px;max-width:400px">
+        <div style="font-size:12px;font-weight:600;color:#f87171;margin-bottom:10px;text-align:center">❌ 关键缺失（需扩展）</div>
+        <div style="background:#450a0a;border-radius:8px;padding:14px;font-size:11px;line-height:1.8;color:#fca5a5">
+          <div>• <b>MCP 支持</b>：无法接入外部工具协议</div>
+          <div>• <b>Hook 系统</b>：无生命周期拦截器</div>
+          <div>• <b>Skill 系统</b>：无技能注册/发现机制</div>
+          <div>• <b>SubAgent</b>：无多代理协作</div>
+          <div>• <b>多 Provider</b>：仅 Anthropic，无法用 GLM 等</div>
+          <div>• <b>多租户</b>：无租户隔离</div>
+          <div>• <b>Auth/RBAC</b>：无认证权限</div>
+          <div>• <b>Web UI</b>：无可视化界面</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ============ Architecture Principle ============ -->
+<div class="section">
+  <div class="section-label">🏗️ 架构原则</div>
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-num" style="background:#1e3a5f;color:#93c5fd">A</div>
+      <div class="flow-text"><span class="highlight">Effect 不可泄漏</span>：Public API 只暴露 Promise，Effect 完全封装在内部</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num" style="background:#14532d;color:#86efac">B</div>
+      <div class="flow-text"><span class="green-hl">事件即真相</span>：所有状态变更通过事件记录，State = fold(Events)</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num" style="background:#3b0764;color:#c4b5fd">C</div>
+      <div class="flow-text"><span style="color:#c4b5fd;font-weight:600">三层分离</span>：Domain（纯类型） → Services（依赖注入） → Programs（副作用）</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num" style="background:#78350f;color:#fcd34d">D</div>
+      <div class="flow-text"><span style="color:#fcd34d;font-weight:600">VCR 模式</span>：录制 Provider 调用 → 存储到 LibSQL → 回放时零 API 成本</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num" style="background:#164e63;color:#67e8f9">E</div>
+      <div class="flow-text"><span style="color:#67e8f9;font-weight:600">分叉即复制</span>：Clone 事件流 → 独立分支 → 不影响原会话</div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:30px;font-size:11px;color:#334155">
+  Open Harness · TypeScript + Effect + Zod · ~28K LOC · 事件驱动 AI Agent 框架 · 2026-05-22
+</div>
+
+</body>
+</html>
